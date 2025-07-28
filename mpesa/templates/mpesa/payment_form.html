@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M-Pesa Payment - Enhanced</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .payment-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .mpesa-logo {
+            width: 80px;
+            height: 80px;
+            background: #00A651;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="text"], input[type="number"], input[type="tel"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        input[type="text"]:focus, input[type="number"]:focus, input[type="tel"]:focus {
+            outline: none;
+            border-color: #00A651;
+            box-shadow: 0 0 0 3px rgba(0,166,81,0.1);
+        }
+        
+        .input-error {
+            border-color: #dc3545 !important;
+            box-shadow: 0 0 0 3px rgba(220,53,69,0.1) !important;
+        }
+        
+        .pay-button, .retry-button, .cancel-button {
+            width: 100%;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .pay-button {
+            background: linear-gradient(135deg, #00A651 0%, #00D1FF 100%);
+            color: white;
+        }
+        
+        .retry-button {
+            background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+            color: white;
+            display: none;
+        }
+        
+        .cancel-button {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+            display: none;
+        }
+        
+        .pay-button:hover, .retry-button:hover, .cancel-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .pay-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .status-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.4;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .loading {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        
+        .warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        
+        .timeout {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .cancelled {
+            background: linear-gradient(135deg, #e2e3e5 0%, #d6d8db 100%);
+            color: #495057;
+            border: 1px solid #d6d8db;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #00A651;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .countdown {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .progress-container {
+            margin-top: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            display: none;
+            text-align: center;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00A651, #00D1FF);
+            width: 0%;
+            transition: width 1s linear;
+            border-radius: 4px;
+            position: relative;
+        }
+        
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .progress-text {
+            font-size: 13px;
+            color: #495057;
+            font-weight: 500;
+        }
+        
+        .attempts-indicator {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: #6c757d;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            display: none;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+            text-align: left;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: blink 1.5s infinite;
+        }
+        
+        .status-indicator.pending {
+            background: #ffc107;
+        }
+        
+        .status-indicator.success {
+            background: #28a745;
+            animation: none;
+        }
+        
+        .status-indicator.error {
+            background: #dc3545;
+            animation: none;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        .payment-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            display: none;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        
+        .payment-info h4 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .payment-info .amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00A651;
+            margin: 10px 0;
+        }
+        
+        .payment-info .phone {
+            color: #6c757d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <div class="attempts-indicator" id="attemptsIndicator"></div>
+        <div class="mpesa-logo">M</div>
+        <h2>M-Pesa Payment</h2>
+        
+        <form id="paymentForm">
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" placeholder="0712345678" required>
+                <div class="help-text">Enter your M-Pesa registered phone number</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="amount">Amount (KES)</label>
+                <input type="number" id="amount" name="amount" min="1" max="150000" placeholder="100" required>
+                <div class="help-text">Minimum: KES 1, Maximum: KES 150,000</div>
+            </div>
+            
+            <button type="submit" class="pay-button" id="payButton">
+                Pay with M-Pesa
+            </button>
+            
+            <button type="button" class="retry-button" id="retryButton">
+                <span class="icon">↻</span> Try Again
+            </button>
+            
+            <button type="button" class="cancel-button" id="cancelButton">
+                <span class="icon">✕</span> Cancel Payment
+            </button>
+        </form>
+        
+        <div id="statusMessage" class="status-message"></div>
+        
+        <div id="progressContainer" class="progress-container">
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+            <div id="countdown" class="countdown"></div>
+            <div class="progress-text">Waiting for M-Pesa confirmation...</div>
+        </div>
+        
+        <div id="paymentInfo" class="payment-info">
+            <h4>Payment Request Sent</h4>
+            <div class="amount">KES <span id="displayAmount"></span></div>
+            <div class="phone">to <span id="displayPhone"></span></div>
+        </div>
+    </div>
+
+    <script>
+        // Get CSRF token function
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('paymentForm');
+            const payButton = document.getElementById('payButton');
+            const retryButton = document.getElementById('retryButton');
+            const cancelButton = document.getElementById('cancelButton');
+            const statusMessage = document.getElementById('statusMessage');
+            const progressContainer = document.getElementById('progressContainer');
+            const countdown = document.getElementById('countdown');
+            const progressFill = document.getElementById('progressFill');
+            const paymentInfo = document.getElementById('paymentInfo');
+            const attemptsIndicator = document.getElementById('attemptsIndicator');
+            const phoneInput = document.getElementById('phone');
+            const amountInput = document.getElementById('amount');
+            
+            let currentTransactionId = null;
+            let monitoringInterval = null;
+            let timeoutTimer = null;
+            let countdownTimer = null;
+            let timeRemaining = 60;
+            let paymentAttempts = 0;
+            let maxAttempts = 3;
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateForm()) {
+                    initiatePayment();
+                }
+            });
+            
+            retryButton.addEventListener('click', function() {
+                clearAllTimers();
+                resetUI();
+                if (paymentAttempts < maxAttempts) {
+                    initiatePayment();
+                } else {
+                    showMessage('Maximum payment attempts reached. Please try again later.', 'error');
+                }
+            });
+            
+            cancelButton.addEventListener('click', function() {
+                cancelPayment();
+            });
+            
+            function validateForm() {
+                let isValid = true;
+                
+                // Reset previous error states
+                phoneInput.classList.remove('input-error');
+                amountInput.classList.remove('input-error');
+                
+                // Validate phone number
+                const phoneRegex = /^(?:254|\+254|0)?([17]\d{8})$/;
+                if (!phoneRegex.test(phoneInput.value.trim())) {
+                    phoneInput.classList.add('input-error');
+                    showMessage('Please enter a valid Kenyan phone number (e.g., 0712345678)', 'error');
+                    isValid = false;
+                }
+                
+                // Validate amount
+                const amount = parseFloat(amountInput.value);
+                if (isNaN(amount) || amount < 1 || amount > 150000) {
+                    amountInput.classList.add('input-error');
+                    if (!isValid) return false;
+                    showMessage('Please enter a valid amount between KES 1 and KES 150,000', 'error');
+                    isValid = false;
+                }
+                
+                return isValid;
+            }
+            
+            function showMessage(message, type, showIndicator = false) {
+                const icons = {
+                    success: '✅',
+                    error: '❌',
+                    loading: '⏳',
+                    warning: '⚠️',
+                    timeout: '⏰',
+                    cancelled: '🚫'
+                };
+                
+                const icon = icons[type] || '';
+                const indicator = showIndicator ? `<span class="status-indicator ${type}"></span>` : '';
+                
+                statusMessage.innerHTML = indicator + icon + ' ' + message;
+                statusMessage.className = `status-message ${type}`;
+                statusMessage.style.display = 'block';
+            }
+            
+            function updatePaymentInfo() {
+                document.getElementById('displayAmount').textContent = amountInput.value;
+                document.getElementById('displayPhone').textContent = phoneInput.value;
+                paymentInfo.style.display = 'block';
+            }
+            
+            function updateAttemptsIndicator() {
+                attemptsIndicator.textContent = `Attempt ${paymentAttempts}/${maxAttempts}`;
+                attemptsIndicator.style.display = paymentAttempts > 0 ? 'block' : 'none';
+            }
+            
+            function resetButton() {
+                payButton.disabled = false;
+                payButton.innerHTML = 'Pay with M-Pesa';
+            }
+            
+            function resetUI() {
+                resetButton();
+                retryButton.style.display = 'none';
+                cancelButton.style.display = 'none';
+                paymentInfo.style.display = 'none';
+                progressContainer.style.display = 'none';
+                countdown.textContent = '';
+                progressFill.style.width = '0%';
+                progressFill.style.background = 'linear-gradient(90deg, #00A651, #00D1FF)';
+                timeRemaining = 60;
+                phoneInput.classList.remove('input-error');
+                amountInput.classList.remove('input-error');
+            }
+            
+            function clearAllTimers() {
+                if (monitoringInterval) {
+                    clearInterval(monitoringInterval);
+                    monitoringInterval = null;
+                }
+                if (timeoutTimer) {
+                    clearTimeout(timeoutTimer);
+                    timeoutTimer = null;
+                }
+                if (countdownTimer) {
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
+                }
+            }
+            
+            function startCountdown() {
+                timeRemaining = 60;
+                progressFill.style.width = '100%';
+                progressContainer.style.display = 'block';
+                
+                countdownTimer = setInterval(() => {
+                    timeRemaining--;
+                    const percentage = (timeRemaining / 60) * 100;
+                    progressFill.style.width = percentage + '%';
+                    
+                    const minutes = Math.floor(timeRemaining / 60);
+                    const seconds = timeRemaining % 60;
+                    countdown.textContent = `Time remaining: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    // Change color as time runs out
+                    if (timeRemaining <= 15) {
+                        progressFill.style.background = 'linear-gradient(90deg, #dc3545, #fd7e14)';
+                    } else if (timeRemaining <= 30) {
+                        progressFill.style.background = 'linear-gradient(90deg, #ffc107, #fd7e14)';
+                    }
+                    
+                    if (timeRemaining <= 0) {
+                        clearInterval(countdownTimer);
+                        countdown.textContent = 'Request expired';
+                    }
+                }, 1000);
+            }
+            
+            function initiatePayment() {
+                paymentAttempts++;
+                updateAttemptsIndicator();
+                
+                const formData = new FormData(form);
+                const paymentData = {
+                    phone_number: formData.get('phone'),
+                    amount: parseFloat(formData.get('amount'))
+                };
+                
+                // Show loading state
+                payButton.disabled = true;
+                payButton.innerHTML = '<span class="spinner"></span>Processing...';
+                showMessage('Initiating M-Pesa payment request...', 'loading', true);
+                retryButton.style.display = 'none';
+                cancelButton.style.display = 'none';
+                paymentInfo.style.display = 'none';
+                
+                // Make payment request
+                fetch('/stk-push/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(paymentData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Payment response:', data);
+                    
+                    if (data.success) {
+                        currentTransactionId = data.transaction_id;
+                        updatePaymentInfo();
+                        showMessage('STK Push sent! Check your phone and enter your M-Pesa PIN.', 'success', true);
+                        cancelButton.style.display = 'block';
+                        startCountdown();
+                        startMonitoring();
+                        
+                        // Set timeout for 60 seconds
+                        timeoutTimer = setTimeout(() => {
+                            handleTimeout();
+                        }, 60000);
+                        
+                    } else {
+                        const errorMessage = getErrorMessage(data.error, data.error_code);
+                        showMessage(errorMessage, 'error');
+                        resetButton();
+                        if (paymentAttempts < maxAttempts) {
+                            retryButton.style.display = 'block';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('Network error. Please check your internet connection and try again.', 'error');
+                    resetButton();
+                    if (paymentAttempts < maxAttempts) {
+                        retryButton.style.display = 'block';
+                    }
+                });
+            }
+            
+            function getErrorMessage(error, errorCode) {
+                const errorMessages = {
+                    '1': 'Insufficient funds in your M-Pesa account',
+                    '2001': 'Invalid phone number or account not found',
+                    '2006': 'Transaction failed due to technical error',
+                    '1001': 'Invalid request format',
+                    '1019': 'Transaction request expired',
+                    '9999': 'System temporarily unavailable',
+                    '1032': 'Request cancelled by user',
+                    '1037': 'Timeout - took too long to respond',
+                    '26': 'System busy, please try again',
+                    '1025': 'Invalid phone number format',
+                    '1036': 'Invalid merchant configuration',
+                    '2019': 'Phone number not registered for M-Pesa',
+                    '17': 'Wrong PIN entered multiple times',
+                    'WS_CO_01': 'Invalid phone number format',
+                    'RCS_ID_TIMEOUT': 'Request timeout from M-Pesa'
+                };
+                
+                if (errorCode && errorMessages[errorCode]) {
+                    return errorMessages[errorCode];
+                }
+                
+                if (error && typeof error === 'string') {
+                    const errorLower = error.toLowerCase();
+                    
+                    if (errorLower.includes('insufficient') || errorLower.includes('balance')) {
+                        return 'Insufficient funds in your M-Pesa account. Please top up and try again.';
+                    }
+                    if (errorLower.includes('invalid') && errorLower.includes('phone')) {
+                        return 'Invalid phone number. Please ensure it\'s registered for M-Pesa.';
+                    }
+                    if (errorLower.includes('timeout') || errorLower.includes('expired')) {
+                        return 'Request timed out. This might be due to network issues.';
+                    }
+                    if (errorLower.includes('system') && errorLower.includes('busy')) {
+                        return 'M-Pesa system is currently busy. Please try again in a few minutes.';
+                    }
+                    if (errorLower.includes('cancelled') || errorLower.includes('cancel')) {
+                        return 'Payment request was cancelled.';
+                    }
+                }
+                
+                return error || 'Payment failed due to an unknown error. Please try again.';
+            }
+            
+            function startMonitoring() {
+                let attempts = 0;
+                const maxMonitoringAttempts = 20;
+                
+                monitoringInterval = setInterval(() => {
+                    attempts++;
+                    
+                    if (attempts > maxMonitoringAttempts) {
+                        clearInterval(monitoringInterval);
+                        return;
+                    }
+                    
+                    fetch(`/transaction/${currentTransactionId}/status/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Status check response:', data);
+                        handleTransactionStatus(data);
+                    })
+                    .catch(error => {
+                        console.error('Status check error:', error);
+                    });
+                }, 3000);
+            }
+            
+            function handleTransactionStatus(data) {
+                const status = data.status;
+                
+                switch(status) {
+                    case 'SUCCESS':
+                        clearAllTimers();
+                        showMessage(`🎉 Payment successful! Receipt: ${data.mpesa_receipt_number || 'Processing...'}`, 'success');
+                        resetButton();
+                        cancelButton.style.display = 'none';
+                        form.reset();
+                        progressFill.style.width = '100%';
+                        progressFill.style.background = '#28a745';
+                        countdown.textContent = 'Payment completed successfully!';
+                        paymentAttempts = 0;
+                        updateAttemptsIndicator();
+                        paymentInfo.style.display = 'none';
+                        break;
+                        
+                    case 'FAILED':
+                        clearAllTimers();
+                        const failureReason = getFailureReason(data.result_code, data.result_desc);
+                        showMessage(failureReason, 'error');
+                        resetButton();
+                        if (paymentAttempts < maxAttempts) {
+                            retryButton.style.display = 'block';
+                        }
+                        cancelButton.style.display = 'none';
+                        paymentInfo.style.display = 'none';
+                        progressFill.style.width = '0%';
+                        countdown.textContent = 'Payment failed';
+                        break;
+                        
+                    case 'CANCELLED':
+                        clearAllTimers();
+                        showMessage('🚫 Payment was cancelled by user', 'cancelled');
+                        resetButton();
+                        if (paymentAttempts < maxAttempts) {
+                            retryButton.style.display = 'block';
+                        }
+                        cancelButton.style.display = 'none';
+                        paymentInfo.style.display = 'none';
+                        progressFill.style.width = '0%';
+                        countdown.textContent = 'Payment cancelled';
+                        break;
+                        
+                    case 'TIMEOUT':
+                        clearAllTimers();
+                        showMessage('⏰ Payment timed out. You took too long to enter your PIN.', 'timeout');
+                        resetButton();
+                        if (paymentAttempts < maxAttempts) {
+                            retryButton.style.display = 'block';
+                        }
+                        cancelButton.style.display = 'none';
+                        paymentInfo.style.display = 'none';
+                        progressFill.style.width = '0%';
+                        countdown.textContent = 'Request timed out';
+                        break;
+                        
+                    case 'INITIATED':
+                    case 'PENDING':
+                        // Continue monitoring
+                        break;
+                        
+                    default:
+                        console.log('Unknown status:', status);
+                        break;
+                }
+            }
+            
+            function getFailureReason(resultCode, resultDesc) {
+                const failureReasons = {
+                    '1': '🚫 Payment cancelled by user',
+                    '1032': '🚫 Payment cancelled by user', 
+                    '1037': '⏰ Payment timeout - took too long to enter PIN',
+                    '2001': '❌ Wrong PIN or invalid phone number',
+                    '1001': '💰 Insufficient funds in M-Pesa account',
+                    '1019': '⏰ Payment request expired',
+                    '9999': '🔧 System error - please try again later',
+                    '26': '⏳ System busy - please try again',
+                    '1025': '📱 Invalid phone number format',
+                    '2006': '❌ Transaction failed - please try again',
+                    '17': '🔐 Wrong PIN entered multiple times - account may be locked',
+                    '1036': '⚙️ Technical error - please contact support'
+                };
+                
+                if (resultCode && failureReasons[String(resultCode)]) {
+                    return failureReasons[String(resultCode)];
+                }
+                
+                if (resultDesc && typeof resultDesc === 'string') {
+                    const desc = resultDesc.toLowerCase();
+                    
+                    if (desc.includes('cancel') || desc.includes('cancelled')) {
+                        return '🚫 Payment was cancelled by user';
+                    }
+                    if (desc.includes('insufficient') || desc.includes('balance')) {
+                        return '💰 Insufficient funds in your M-Pesa account';
+                    }
+                    if (desc.includes('timeout') || desc.includes('expired') || desc.includes('time out')) {
+                        return '⏰ Payment timed out - please try again';
+                    }
+                    if (desc.includes('pin') || desc.includes('wrong')) {
+                        return '🔐 Wrong PIN entered - please try again';
+                    }
+                    if (desc.includes('busy') || desc.includes('system')) {
+                        return '⏳ M-Pesa system is busy - please try again';
+                    }
+                    if (desc.includes('invalid') && desc.includes('phone')) {
+                        return '📱 Invalid phone number - please check and try again';
+                    }
+                }
+                
+                return `❌ Payment failed: ${resultDesc || 'Unknown error'}`;
+            }
+            
+            function handleTimeout() {
+                clearAllTimers();
+                showMessage('⏰ Payment request expired. This usually happens when you take too long to respond to the M-Pesa prompt.', 'timeout');
+                resetButton();
+                if (paymentAttempts < maxAttempts) {
+                    retryButton.style.display = 'block';
+                }
+                cancelButton.style.display = 'none';
+                paymentInfo.style.display = 'none';
+                progressFill.style.width = '0%';
+                countdown.textContent = 'Request expired';
+                
+                // Final status check in case payment completed just after timeout
+                if (currentTransactionId) {
+                    setTimeout(() => {
+                        fetch(`/transaction/${currentTransactionId}/status/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'SUCCESS') {
+                                showMessage(`🎉 Payment completed! Receipt: ${data.mpesa_receipt_number || 'Processing...'}`, 'success');
+                                retryButton.style.display = 'none';
+                                form.reset();
+                                paymentAttempts = 0;
+                                updateAttemptsIndicator();
+                                paymentInfo.style.display = 'none';
+                            }
+                        })
+                        .catch(error => console.error('Final status check error:', error));
+                    }, 3000);
+                }
+            }
+            
+            function cancelPayment() {
+                clearAllTimers();
+                showMessage('🚫 Payment request cancelled by user', 'cancelled');
+                resetButton();
+                retryButton.style.display = 'block';
+                cancelButton.style.display = 'none';
+                paymentInfo.style.display = 'none';
+                progressContainer.style.display = 'none';
+                
+                // Optionally notify backend about cancellation
+                if (currentTransactionId) {
+                    // This would require an endpoint to mark transaction as cancelled
+                    // fetch(`/mpesa/transaction/${currentTransactionId}/cancel/`, { method: 'POST' });
+                }
+            }
+            
+            // Enhanced input validation with real-time feedback
+            phoneInput.addEventListener('input', function() {
+                this.classList.remove('input-error');
+                const phoneRegex = /^(?:254|\+254|0)?([17]\d{8})$/;
+                if (this.value && !phoneRegex.test(this.value.trim())) {
+                    this.style.borderColor = '#ffc107';
+                } else if (this.value) {
+                    this.style.borderColor = '#28a745';
+                } else {
+                    this.style.borderColor = '#e1e5e9';
+                }
+            });
+            
+            amountInput.addEventListener('input', function() {
+                this.classList.remove('input-error');
+                const amount = parseFloat(this.value);
+                if (this.value && (isNaN(amount) || amount < 1 || amount > 150000)) {
+                    this.style.borderColor = '#ffc107';
+                } else if (this.value) {
+                    this.style.borderColor = '#28a745';
+                } else {
+                    this.style.borderColor = '#e1e5e9';
+                }
+            });
+            
+            // Format phone number on blur
+            phoneInput.addEventListener('blur', function() {
+                let phone = this.value.replace(/\D/g, ''); // Remove non-digits
+                
+                if (phone.startsWith('0') && phone.length === 10) {
+                    phone = '254' + phone.substring(1);
+                } else if (phone.startsWith('254') && phone.length === 12) {
+                    // Already correct
+                } else if (phone.length === 9) {
+                    phone = '254' + phone;
+                }
+                
+                if (phone.length === 12 && phone.startsWith('254')) {
+                    this.value = '0' + phone.substring(3); // Display as 0XXXXXXXXX
+                }
+            });
+            
+            // Auto-focus next field
+            phoneInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && this.value) {
+                    amountInput.focus();
+                }
+            });
+            
+            amountInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && this.value) {
+                    form.dispatchEvent(new Event('submit'));
+                }
+            });
+            
+            // Prevent multiple rapid submissions
+            let isSubmitting = false;
+            form.addEventListener('submit', function(e) {
+                if (isSubmitting) {
+                    e.preventDefault();
+                    return;
+                }
+                isSubmitting = true;
+                setTimeout(() => { isSubmitting = false; }, 2000);
+            });
+            
+            // Show helpful tips based on user interaction
+            let showTips = true;
+            setTimeout(() => {
+                if (showTips && !currentTransactionId) {
+                    showMessage('💡 Tip: Make sure your phone has network coverage and sufficient M-Pesa balance before initiating payment.', 'warning');
+                }
+            }, 10000);
+            
+            // Hide tips when user starts interacting
+            [phoneInput, amountInput].forEach(input => {
+                input.addEventListener('focus', () => {
+                    showTips = false;
+                    if (statusMessage.innerHTML.includes('💡 Tip:')) {
+                        statusMessage.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
